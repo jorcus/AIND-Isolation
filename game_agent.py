@@ -310,6 +310,7 @@ class AlphaBetaPlayer(IsolationPlayer):
         legal_moves = game.get_legal_moves()
         if not legal_moves: return best_move
         try:
+            #return self.alphabeta(game,self.search_depth)
             depth = 1
             while self.time_left() > self.TIMER_THRESHOLD:
                 best_move = self.alphabeta(game, depth)
@@ -318,90 +319,89 @@ class AlphaBetaPlayer(IsolationPlayer):
             return best_move
         return best_move
 
-    def max_value(self, game, depth, alpha, beta):
-        if self.time_left() < self.TIMER_THRESHOLD: raise SearchTimeout()
-        legal_moves = game.get_legal_moves()
-        if depth <= 0 or game.utility(self) != 0: return self.score(game, self)
-        if not legal_moves: return best_move
-        best_score = float("-inf")
-        for move in legal_moves:
-            best_score = max(best_score, self.min_value(game.forecast_move(move), depth - 1, alpha, beta))
-            if best_score >= beta:
-                return best_score
-            alpha = max(alpha, best_score)
-        return best_score
-
-    def min_value(self, game, depth, alpha, beta):
-        if self.time_left() < self.TIMER_THRESHOLD: raise SearchTimeout()
-        legal_moves = game.get_legal_moves()
-        if depth <= 0 or game.utility(self) != 0: return self.score(game, self)
-        if not legal_moves: return best_move
-        best_score = float("inf")
-        for move in legal_moves:
-            best_score = min(best_score, self.max_value(game.forecast_move(move), depth - 1, alpha, beta))
-            if best_score <= alpha:
-                return best_score
-            beta = max(beta, best_score)
-        return best_score
-
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf")):
-        """Implement depth-limited minimax search with alpha-beta pruning as
-        described in the lectures.
+            """Implement depth-limited minimax search with alpha-beta pruning as
+            described in the lectures.
 
-        This should be a modified version of ALPHA-BETA-SEARCH in the AIMA text
-        https://github.com/aimacode/aima-pseudocode/blob/master/md/Alpha-Beta-Search.md
+            This should be a modified version of ALPHA-BETA-SEARCH in the AIMA text
+            https://github.com/aimacode/aima-pseudocode/blob/master/md/Alpha-Beta-Search.md
 
-        **********************************************************************
-            You MAY add additional methods to this class, or define helper
-                 functions to implement the required functionality.
-        **********************************************************************
+            **********************************************************************
+                You MAY add additional methods to this class, or define helper
+                     functions to implement the required functionality.
+            **********************************************************************
 
-        Parameters
-        ----------
-        game : isolation.Board
-            An instance of the Isolation game `Board` class representing the
-            current game state
+            Parameters
+            ----------
+            game : isolation.Board
+                An instance of the Isolation game `Board` class representing the
+                current game state
 
-        depth : int
-            Depth is an integer representing the maximum number of plies to
-            search in the game tree before aborting
+            depth : int
+                Depth is an integer representing the maximum number of plies to
+                search in the game tree before aborting
 
-        alpha : float
-            Alpha limits the lower bound of search on minimizing layers
+            alpha : float
+                Alpha limits the lower bound of search on minimizing layers
 
-        beta : float
-            Beta limits the upper bound of search on maximizing layers
+            beta : float
+                Beta limits the upper bound of search on maximizing layers
 
-        Returns
-        -------
-        (int, int)
-            The board coordinates of the best move found in the current search;
-            (-1, -1) if there are no legal moves
+            Returns
+            -------
+            (int, int)
+                The board coordinates of the best move found in the current search;
+                (-1, -1) if there are no legal moves
 
-        Notes
-        -----
-            (1) You MUST use the `self.score()` method for board evaluation
-                to pass the project tests; you cannot call any other evaluation
-                function directly.
+            Notes
+            -----
+                (1) You MUST use the `self.score()` method for board evaluation
+                    to pass the project tests; you cannot call any other evaluation
+                    function directly.
 
-            (2) If you use any helper functions (e.g., as shown in the AIMA
-                pseudocode) then you must copy the timer check into the top of
-                each helper function or else your agent will timeout during
-                testing.
-        """
-        if self.time_left() < self.TIMER_THRESHOLD: raise SearchTimeout()
-        best_move = (-1, -1)
-        legal_moves = game.get_legal_moves()
-        if not legal_moves or depth <= 0: return (-1, -1)
-        best_score = float('-inf')
-        for move in legal_moves:
-            score = self.min_value(game.forecast_move(move), depth - 1, alpha, beta)
-            if score > alpha:
-                best_score = score
-                best_move = move
+                (2) If you use any helper functions (e.g., as shown in the AIMA
+                    pseudocode) then you must copy the timer check into the top of
+                    each helper function or else your agent will timeout during
+                    testing.
+            """
+            if self.time_left() < self.TIMER_THRESHOLD: raise SearchTimeout()
+
+            def max_value(game, depth2, alpha, beta):
+                if self.time_left() < self.TIMER_THRESHOLD: raise SearchTimeout()
+                if cutoff_test(game, depth2): return self.score(game, self)
+                score = -infinity
+                for move in game.get_legal_moves():
+                    score = max(score, min_value(game.forecast_move(move), depth2 + 1, alpha, beta))
+                    # alpha-beta pruning condition
+                    if score >= beta: return score
+                    alpha = max(alpha, score)
+                return score
+
+            def min_value(game, depth2, alpha, beta):
+                if self.time_left() < self.TIMER_THRESHOLD: raise SearchTimeout()
+                if cutoff_test(game, depth2): return self.score(game, self)
+                score = infinity
+                for move in game.get_legal_moves():
+                    score = min(score, max_value(game.forecast_move(move), depth2 + 1, alpha, beta))
+                    # alpha-beta pruning condition
+                    if score <= alpha: return score
+                    beta = min(beta, score)
+                return score
+
+            # Cutoff Function conditions
+            cutoff_test = (None or
+                           (lambda game, depth2: depth2 >= depth or
+                            game.utility(self) or not game.get_legal_moves()))
+
+            # Body of minimax AB pruning decision:
+            best_move = None
+            infinity = float('inf')
+            beta = infinity
+            best_score = -infinity
+            for move in game.get_legal_moves():
+                score = min_value(game.forecast_move(move), 1, best_score, beta)
+                if score > best_score:
+                    best_score = score
+                    best_move = move
                 alpha = max(alpha, best_score)
-            if best_score >= beta:
-                return best_move
-        return best_move
-
-
+            return best_move
